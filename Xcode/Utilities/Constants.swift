@@ -27,9 +27,16 @@ struct Constants {
     static let posthogAPIKey = "phc_9mIgGbUnOuES2iboBHsZ8EWUDBk2bVAhSO4sxz4DSrA"
     static let posthogHost = "https://us.posthog.com"
 
+    // Junction (Vital) SDK Configuration
+    // Reference: /Users/barack/Downloads/Xcode/3rd_Party_Bio_Data_Integration_Report.md
+    // Note: Replace with actual API key after signing BAA with Junction
+    static let junctionAPIKey = "YOUR_JUNCTION_API_KEY"
+    static let junctionEnvironment = "sandbox" // "sandbox" or "production"
+
     // Feature Flags
     static let isHealthKitEnabled = true
     static let isPushNotificationsEnabled = false
+    static let isJunctionEnabled = false // Enable after Junction contract is signed
 
     // UI Colors (Sage Green Primary)
     static let primaryColorHex = "#A8B79E"

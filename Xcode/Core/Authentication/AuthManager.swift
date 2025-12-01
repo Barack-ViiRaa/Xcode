@@ -10,9 +10,10 @@ import Foundation
 import Combine
 import Supabase
 import UIKit
+import AuthenticationServices
 
 @MainActor
-class AuthManager: ObservableObject {
+class AuthManager: NSObject, ObservableObject {
     static let shared = AuthManager()
 
     @Published var user: User?
@@ -23,8 +24,10 @@ class AuthManager: ObservableObject {
     private let supabase = SupabaseManager.shared
     private let keychain = KeychainManager.shared
     private var cancellables = Set<AnyCancellable>()
+    private var presentationAnchor: ASPresentationAnchor?
 
-    private init() {
+    override private init() {
+        super.init()
         setupAuthStateListener()
         checkExistingSession()
     }
@@ -100,10 +103,54 @@ class AuthManager: ObservableObject {
     }
 
     func signInWithGoogle() async throws {
-        // Launch Google OAuth flow
-        let oauthSession = try await supabase.auth.signInWithOAuth(provider: .google)
-        let session = convertSession(oauthSession)
-        await handleSuccessfulAuth(session: session)
+        // Specify the iOS app's custom URL scheme for OAuth callback
+        // This is critical for native app OAuth to work properly
+        guard let redirectURL = URL(string: "viiraa://auth-callback") else {
+            throw AuthError.invalidRedirectURL
+        }
+
+        // Get the OAuth URL from Supabase
+        let oauthURL = try await supabase.auth.getOAuthSignInURL(
+            provider: .google,
+            redirectTo: redirectURL
+        )
+
+        // Present the OAuth flow using ASWebAuthenticationSession
+        // This is critical to avoid Google's "disallowed_useragent" error
+        let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+            let authSession = ASWebAuthenticationSession(
+                url: oauthURL,
+                callbackURLScheme: "viiraa"
+            ) { callbackURL, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let callbackURL = callbackURL else {
+                    continuation.resume(throwing: AuthError.noCallbackURL)
+                    return
+                }
+
+                continuation.resume(returning: callbackURL)
+            }
+
+            authSession.presentationContextProvider = self
+            authSession.prefersEphemeralWebBrowserSession = false
+            authSession.start()
+        }
+
+        // Exchange the callback URL for a session by letting Supabase handle the auth code
+        // The callback URL contains parameters like ?code=xxx which Supabase will process
+        try await supabase.auth.session(from: callbackURL)
+
+        // After successful authentication, check the session
+        if let currentSession = try? await supabase.auth.session {
+            let session = convertSession(currentSession)
+            await handleSuccessfulAuth(session: session)
+        } else {
+            throw AuthError.noSession
+        }
     }
 
     func signInWithPassword(email: String, password: String) async throws {
@@ -152,12 +199,26 @@ class AuthManager: ObservableObject {
     }
 }
 
+// MARK: - ASWebAuthenticationPresentationContextProviding
+
+extension AuthManager: ASWebAuthenticationPresentationContextProviding {
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        // Get the key window for presenting the authentication session
+        return UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+}
+
 // MARK: - Auth Errors
 
 enum AuthError: Error {
     case noSession
     case invalidCredentials
     case networkError
+    case invalidRedirectURL
+    case noCallbackURL
 
     var localizedDescription: String {
         switch self {
@@ -167,6 +228,10 @@ enum AuthError: Error {
             return "Invalid email or password"
         case .networkError:
             return "Network connection error"
+        case .invalidRedirectURL:
+            return "Invalid redirect URL configuration"
+        case .noCallbackURL:
+            return "No callback URL received from OAuth provider"
         }
     }
 }

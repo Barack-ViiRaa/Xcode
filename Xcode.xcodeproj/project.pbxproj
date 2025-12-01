@@ -17,26 +17,26 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		71FB6F992EA0470100264333 /* 251015-Xcode.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "251015-Xcode.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		71FB6F992EA0470100264333 /* Xcode.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Xcode.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		71BAFE572EA0A04C00EA4D02 /* Exceptions for "251015-Xcode" folder in "251015-Xcode" target */ = {
+		71BAFE572EA0A04C00EA4D02 /* Exceptions for "Xcode" folder in "Xcode" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Resources/Info.plist,
 			);
-			target = 71FB6F982EA0470100264333 /* 251015-Xcode */;
+			target = 71FB6F982EA0470100264333 /* Xcode */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		71FB6F9B2EA0470100264333 /* 251015-Xcode */ = {
+		71FB6F9B2EA0470100264333 /* Xcode */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				71BAFE572EA0A04C00EA4D02 /* Exceptions for "251015-Xcode" folder in "251015-Xcode" target */,
+				71BAFE572EA0A04C00EA4D02 /* Exceptions for "Xcode" folder in "Xcode" target */,
 			);
-			path = "251015-Xcode";
+			path = Xcode;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,7 +69,7 @@
 		71FB6F902EA0470100264333 = {
 			isa = PBXGroup;
 			children = (
-				71FB6F9B2EA0470100264333 /* 251015-Xcode */,
+				71FB6F9B2EA0470100264333 /* Xcode */,
 				71BAFE5A2EA0A4C900EA4D02 /* Frameworks */,
 				71FB6F9A2EA0470100264333 /* Products */,
 			);
@@ -78,7 +78,7 @@
 		71FB6F9A2EA0470100264333 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				71FB6F992EA0470100264333 /* 251015-Xcode.app */,
+				71FB6F992EA0470100264333 /* Xcode.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -86,9 +86,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		71FB6F982EA0470100264333 /* 251015-Xcode */ = {
+		71FB6F982EA0470100264333 /* Xcode */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 71FB6FA42EA0470400264333 /* Build configuration list for PBXNativeTarget "251015-Xcode" */;
+			buildConfigurationList = 71FB6FA42EA0470400264333 /* Build configuration list for PBXNativeTarget "Xcode" */;
 			buildPhases = (
 				71FB6F952EA0470100264333 /* Sources */,
 				71FB6F962EA0470100264333 /* Frameworks */,
@@ -99,9 +99,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				71FB6F9B2EA0470100264333 /* 251015-Xcode */,
+				71FB6F9B2EA0470100264333 /* Xcode */,
 			);
-			name = "251015-Xcode";
+			name = Xcode;
 			packageProductDependencies = (
 				71BAFE4A2EA09C9300EA4D02 /* Auth */,
 				71BAFE4C2EA09C9300EA4D02 /* Functions */,
@@ -111,8 +111,8 @@
 				71BAFE552EA09CC500EA4D02 /* PostHog */,
 				71BAFE5B2EA0A4C900EA4D02 /* Supabase */,
 			);
-			productName = "251015-Xcode";
-			productReference = 71FB6F992EA0470100264333 /* 251015-Xcode.app */;
+			productName = Xcode;
+			productReference = 71FB6F992EA0470100264333 /* Xcode.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -130,7 +130,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 71FB6F942EA0470100264333 /* Build configuration list for PBXProject "251015-Xcode" */;
+			buildConfigurationList = 71FB6F942EA0470100264333 /* Build configuration list for PBXProject "Xcode" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -148,7 +148,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				71FB6F982EA0470100264333 /* 251015-Xcode */,
+				71FB6F982EA0470100264333 /* Xcode */,
 			);
 		};
 /* End PBXProject section */
@@ -231,10 +231,9 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = appletvos;
+				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				TVOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -288,9 +287,8 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = appletvos;
+				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				TVOS_DEPLOYMENT_TARGET = 26.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -300,7 +298,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "251015-Xcode/251015-Xcode.entitlements";
+				CODE_SIGN_ENTITLEMENTS = Xcode/Xcode.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -308,15 +306,16 @@
 				DEVELOPMENT_TEAM = 934S9W736Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "251015-Xcode/Resources/Info.plist";
+				INFOPLIST_FILE = Xcode/Resources/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.viiraa.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.viiraa.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -335,7 +334,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "251015-Xcode/251015-Xcode.entitlements";
+				CODE_SIGN_ENTITLEMENTS = Xcode/Xcode.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -343,15 +342,16 @@
 				DEVELOPMENT_TEAM = 934S9W736Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "251015-Xcode/Resources/Info.plist";
+				INFOPLIST_FILE = Xcode/Resources/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.viiraa.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.viiraa.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -368,7 +368,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		71FB6F942EA0470100264333 /* Build configuration list for PBXProject "251015-Xcode" */ = {
+		71FB6F942EA0470100264333 /* Build configuration list for PBXProject "Xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				71FB6FA22EA0470400264333 /* Debug */,
@@ -377,7 +377,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		71FB6FA42EA0470400264333 /* Build configuration list for PBXNativeTarget "251015-Xcode" */ = {
+		71FB6FA42EA0470400264333 /* Build configuration list for PBXNativeTarget "Xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				71FB6FA52EA0470400264333 /* Debug */,

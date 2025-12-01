@@ -24,10 +24,10 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
-            // Glucose Tab
+            // Glucose Tab (Native HealthKit Integration)
             GlucoseView()
                 .tabItem {
-                    Label("Glucose", systemImage: "drop.fill")
+                    Label("Glucose", systemImage: "heart.text.square.fill")
                 }
                 .tag(1)
 
@@ -37,6 +37,13 @@ struct MainTabView: View {
                     Label("Chat", systemImage: "message.fill")
                 }
                 .tag(2)
+
+            // Settings Tab
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+                .tag(3)
         }
         .accentColor(Color(hex: Constants.primaryColorHex))
         .sheet(isPresented: $showHealthKitPermission) {

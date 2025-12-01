@@ -48,7 +48,7 @@ struct GlucoseView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding(.horizontal)
-                    .onChange(of: selectedTimeRange) {
+                    .onChange(of: selectedTimeRange) { _ in
                         Task {
                             await loadGlucoseData()
                         }

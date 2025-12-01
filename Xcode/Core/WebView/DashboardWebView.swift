@@ -23,6 +23,9 @@ struct DashboardWebView: UIViewRepresentable {
         Coordinator(self)
     }
 
+    // Track whether session has been injected to prevent re-injection loop
+    private static var injectedSessionUserId: String?
+
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
 
@@ -63,9 +66,12 @@ struct DashboardWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Update WebView if needed
-        // Check if we need to update the session
-        if let session = session {
+        // ⚠️ DO NOT re-inject session here - causes infinite loop
+        // Session is already injected in makeUIView and didFinish
+        // Only inject if session user ID has changed (user switched accounts)
+        if let session = session,
+           DashboardWebView.injectedSessionUserId != session.user.id {
+            print("⚠️ User account changed, re-injecting session")
             injectSession(webView: webView, session: session)
         }
     }
@@ -79,17 +85,23 @@ struct DashboardWebView: UIViewRepresentable {
 
         let script = """
         (function() {
+            console.log('🔄 iOS Session Injection - Starting...');
+
             // Full Supabase session data
             const sessionData = {
                 access_token: '\(escapedAccessToken)',
                 refresh_token: '\(escapedRefreshToken)',
                 expires_in: \(session.expiresIn),
+                expires_at: Math.floor(Date.now() / 1000) + \(session.expiresIn),
                 token_type: '\(session.tokenType)',
                 user: {
                     id: '\(escapedUserId)',
                     email: '\(escapedUserEmail)',
                     aud: 'authenticated',
-                    role: 'authenticated'
+                    role: 'authenticated',
+                    email_confirmed_at: new Date().toISOString(),
+                    app_metadata: {},
+                    user_metadata: {}
                 }
             };
 
@@ -100,18 +112,50 @@ struct DashboardWebView: UIViewRepresentable {
                 // Store the full session in localStorage
                 localStorage.setItem(storageKey, JSON.stringify(sessionData));
                 console.log('✅ iOS Supabase session injected successfully');
+                console.log('📝 Session data:', {
+                    user_id: sessionData.user.id,
+                    user_email: sessionData.user.email,
+                    has_access_token: !!sessionData.access_token,
+                    has_refresh_token: !!sessionData.refresh_token
+                });
 
-                // Also set global flags for iOS app
+                // Set global flags for iOS app - CRITICAL for web app detection
                 window.iosAuthenticated = true;
                 window.iosSession = sessionData;
+                window.isIOSApp = true;
 
-                // Dispatch custom event to notify web app
+                // Create a function to skip Google OAuth on web
+                window.skipWebAuth = true;
+
+                // Dispatch custom event to notify web app IMMEDIATELY
                 window.dispatchEvent(new CustomEvent('ios-auth-ready', {
                     detail: {
                         session: sessionData,
-                        authenticated: true
+                        authenticated: true,
+                        source: 'ios-native'
                     }
                 }));
+
+                // Trigger storage event for Supabase client listening
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: storageKey,
+                    newValue: JSON.stringify(sessionData),
+                    url: window.location.href,
+                    storageArea: localStorage
+                }));
+
+                // Verify storage
+                const stored = localStorage.getItem(storageKey);
+                if (stored) {
+                    console.log('✅ Verified: Session successfully stored in localStorage');
+                } else {
+                    console.error('❌ Verification failed: Session not found in localStorage');
+                }
+
+                // ❌ REMOVED: Auto-reload causes infinite loop
+                // The web app should detect ios-auth-ready event and react accordingly
+                // Do NOT force reload from iOS side
+
             } catch (e) {
                 console.error('❌ Failed to inject session:', e);
             }
@@ -125,6 +169,10 @@ struct DashboardWebView: UIViewRepresentable {
         )
 
         webView.configuration.userContentController.addUserScript(userScript)
+
+        // Log injection attempt in native code and track injected user
+        print("🔄 Injecting session for user: \(session.user.email)")
+        DashboardWebView.injectedSessionUserId = session.user.id
     }
 
     // MARK: - Coordinator
@@ -132,6 +180,7 @@ struct DashboardWebView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: DashboardWebView
         weak var webView: WKWebView?
+        var hasInjectedPostLoad = false  // Guard flag to prevent re-injection loop
 
         init(_ parent: DashboardWebView) {
             self.parent = parent
@@ -150,8 +199,15 @@ struct DashboardWebView: UIViewRepresentable {
                 self.parent.isLoading = false
             }
 
+            // ⚠️ GUARD: Only inject once per session to prevent infinite loop
+            guard !hasInjectedPostLoad else {
+                print("⏭️ Skipping post-load injection - already injected")
+                return
+            }
+
             // Inject session again after page load to ensure it's set
             if let session = parent.session {
+                hasInjectedPostLoad = true  // Set flag BEFORE injection to prevent re-entry
                 let escapedAccessToken = session.accessToken.replacingOccurrences(of: "'", with: "\\'")
                 let escapedRefreshToken = session.refreshToken.replacingOccurrences(of: "'", with: "\\'")
                 let escapedUserId = session.user.id.replacingOccurrences(of: "'", with: "\\'")
@@ -163,12 +219,16 @@ struct DashboardWebView: UIViewRepresentable {
                         access_token: '\(escapedAccessToken)',
                         refresh_token: '\(escapedRefreshToken)',
                         expires_in: \(session.expiresIn),
+                        expires_at: Math.floor(Date.now() / 1000) + \(session.expiresIn),
                         token_type: '\(session.tokenType)',
                         user: {
                             id: '\(escapedUserId)',
                             email: '\(escapedUserEmail)',
                             aud: 'authenticated',
-                            role: 'authenticated'
+                            role: 'authenticated',
+                            email_confirmed_at: new Date().toISOString(),
+                            app_metadata: {},
+                            user_metadata: {}
                         }
                     };
 
@@ -178,10 +238,30 @@ struct DashboardWebView: UIViewRepresentable {
                         localStorage.setItem(storageKey, JSON.stringify(sessionData));
                         window.iosAuthenticated = true;
                         window.iosSession = sessionData;
+                        window.isIOSApp = true;
+                        window.skipWebAuth = true;
                         console.log('✅ Session re-injected after page load');
 
+                        // Dispatch custom event
+                        window.dispatchEvent(new CustomEvent('ios-auth-ready', {
+                            detail: {
+                                session: sessionData,
+                                authenticated: true,
+                                source: 'ios-native-postload'
+                            }
+                        }));
+
                         // Trigger storage event to notify Supabase client
-                        window.dispatchEvent(new Event('storage'));
+                        window.dispatchEvent(new StorageEvent('storage', {
+                            key: storageKey,
+                            newValue: JSON.stringify(sessionData),
+                            url: window.location.href,
+                            storageArea: localStorage
+                        }));
+
+                        // ❌ REMOVED: Auto-reload causes infinite loop
+                        // The web dashboard should listen for ios-auth-ready event
+                        // and handle authentication without requiring reload
                     } catch (e) {
                         console.error('❌ Failed to re-inject session:', e);
                     }
@@ -195,6 +275,9 @@ struct DashboardWebView: UIViewRepresentable {
                     }
                 }
             }
+
+            // Hide web dashboard logout button (iOS handles sign-out natively)
+            hideWebLogoutButton(webView: webView)
 
             // Inject HealthKit data after page load if available
             injectHealthKitData(webView: webView)
@@ -249,6 +332,103 @@ struct DashboardWebView: UIViewRepresentable {
                     ])
                 } catch {
                     print("❌ Error fetching health data: \(error.localizedDescription)")
+                }
+            }
+        }
+
+        private func hideWebLogoutButton(webView: WKWebView) {
+            // Inject CSS and JavaScript to hide the web dashboard's logout button
+            // Since iOS provides native sign-out in Settings and Dashboard menu,
+            // we hide the web logout button to avoid redundancy and confusion
+            let script = """
+            (function() {
+                console.log('🔒 iOS: Hiding web logout button (native sign-out available)');
+
+                // Add CSS to hide logout/sign-out buttons
+                const style = document.createElement('style');
+                style.textContent = `
+                    /* Hide logout button by common selectors */
+                    button[data-testid*="logout"],
+                    button[data-testid*="signout"],
+                    button[data-testid*="sign-out"],
+                    a[href*="logout"],
+                    a[href*="signout"],
+                    a[href*="sign-out"],
+                    .logout-button,
+                    .signout-button,
+                    .sign-out-button,
+                    #logout-button,
+                    #signout-button,
+                    #sign-out-button,
+                    button:has-text("Log Out"),
+                    button:has-text("Logout"),
+                    button:has-text("Sign Out"),
+                    button:has-text("Signout") {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    }
+                `;
+                document.head.appendChild(style);
+
+                // Also search DOM for logout buttons and hide them directly
+                function hideLogoutButtons() {
+                    const selectors = [
+                        'button[data-testid*="logout"]',
+                        'button[data-testid*="signout"]',
+                        'button[data-testid*="sign-out"]',
+                        'a[href*="logout"]',
+                        'a[href*="signout"]',
+                        'button',
+                        'a'
+                    ];
+
+                    selectors.forEach(selector => {
+                        document.querySelectorAll(selector).forEach(el => {
+                            const text = el.textContent?.toLowerCase() || '';
+                            const ariaLabel = el.getAttribute('aria-label')?.toLowerCase() || '';
+
+                            if (text.includes('log out') ||
+                                text.includes('logout') ||
+                                text.includes('sign out') ||
+                                text.includes('signout') ||
+                                ariaLabel.includes('log out') ||
+                                ariaLabel.includes('logout') ||
+                                ariaLabel.includes('sign out') ||
+                                ariaLabel.includes('signout')) {
+                                el.style.display = 'none';
+                                el.style.visibility = 'hidden';
+                                el.style.opacity = '0';
+                                el.style.pointerEvents = 'none';
+                                console.log('🔒 Hidden logout element:', el);
+                            }
+                        });
+                    });
+                }
+
+                // Run immediately
+                hideLogoutButtons();
+
+                // Run after DOM changes (for dynamically loaded content)
+                const observer = new MutationObserver(() => {
+                    hideLogoutButtons();
+                });
+
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+
+                console.log('✅ Web logout button hiding initialized');
+            })();
+            """
+
+            webView.evaluateJavaScript(script) { result, error in
+                if let error = error {
+                    print("❌ Error hiding web logout button: \(error.localizedDescription)")
+                } else {
+                    print("✅ Web logout button hidden successfully")
                 }
             }
         }
