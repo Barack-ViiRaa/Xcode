@@ -72,6 +72,10 @@
 	<string>ViiRaa would like to save health insights to your Health app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ViiRaa needs access to your photo library to save and share your progress photos.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ViiRaa uses Bluetooth to receive real-time glucose readings from your CGM device for immediate health insights.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>ViiRaa monitors Bluetooth communications to provide real-time glucose data updates.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -93,21 +97,19 @@
 	<array>
 		<string>com.viiraa.app.healthkit-sync</string>
 		<string>com.viiraa.app.data-refresh</string>
+		<string>io.tryvital.VitalHealthKit.ProcessingTask</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>processing</string>
+		<string>bluetooth-central</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchScreenBackground</string>
 	</dict>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>healthkit</string>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

@@ -25,7 +25,9 @@ struct MainTabView: View {
                 .tag(0)
 
             // Glucose Tab (Native HealthKit Integration)
+            // Passes authManager for Glucose Predictions feature (PRD Section 4.2)
             GlucoseView()
+                .environmentObject(authManager)
                 .tabItem {
                     Label("Glucose", systemImage: "heart.text.square.fill")
                 }

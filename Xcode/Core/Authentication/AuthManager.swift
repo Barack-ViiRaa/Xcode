@@ -189,9 +189,41 @@ class AuthManager: NSObject, ObservableObject {
         AnalyticsManager.shared.track(event: "user_signed_in", properties: [
             "method": "email" // or "google"
         ])
+
+        // Connect user to Junction if enabled
+        if Constants.isJunctionEnabled {
+            Task {
+                do {
+                    // Connect user to Junction
+                    try await JunctionManager.shared.connectUser(userId: session.user.id)
+
+                    // Request HealthKit permissions through Junction
+                    try await JunctionManager.shared.requestHealthKitPermissions()
+
+                    // Start automatic hourly sync
+                    JunctionManager.shared.startAutomaticSync()
+
+                    print("✅ User successfully connected to Junction and sync started")
+                } catch {
+                    // Log error but don't fail authentication
+                    // Junction integration is optional and shouldn't block sign-in
+                    print("⚠️ Failed to connect to Junction: \(error.localizedDescription)")
+
+                    // Track Junction connection failure
+                    AnalyticsManager.shared.track(event: "junction_connection_failed", properties: [
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        }
     }
 
     private func clearSession() async {
+        // Disconnect from Junction if connected
+        if Constants.isJunctionEnabled {
+            JunctionManager.shared.disconnect()
+        }
+
         keychain.clearSessionData()
         self.session = nil
         self.user = nil

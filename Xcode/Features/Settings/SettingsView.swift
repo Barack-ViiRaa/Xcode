@@ -12,11 +12,13 @@ import HealthKit
 struct SettingsView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var healthKitManager = HealthKitManager.shared
+    @StateObject private var junctionManager = JunctionManager.shared
     @State private var healthKitAuthStatus: HKAuthorizationStatus = .notDetermined
     @State private var hasGlucoseData = false
     @State private var isCheckingPermissions = false
     @State private var showSignOutConfirmation = false
     @State private var isSigningOut = false
+    @State private var isSyncingJunction = false
 
     var body: some View {
         NavigationView {
@@ -85,6 +87,102 @@ struct SettingsView: View {
                         Text("Due to Apple's privacy protections, the permission status may not always reflect the actual access granted. If you've granted access and can see glucose data in the Glucose tab, your permissions are working correctly.")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    }
+                }
+
+                // BLE Follow Mode Section
+                Section(header: Text("Real-time Glucose")) {
+                    NavigationLink(destination: BLEFollowSettingsView()) {
+                        HStack {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .foregroundColor(.blue)
+                            VStack(alignment: .leading) {
+                                Text("BLE Follow Mode")
+                                    .font(.headline)
+                                Text("Real-time glucose with 1-5 min latency")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("About BLE Follow Mode")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("Monitor real-time glucose readings from your Abbott Lingo sensor via Bluetooth. Requires Abbott Lingo app and active sensor.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Junction Cloud Sync Section
+                if Constants.isJunctionEnabled {
+                    Section(header: Text("Cloud Sync")) {
+                        HStack {
+                            Image(systemName: "cloud.fill")
+                                .foregroundColor(.blue)
+                            VStack(alignment: .leading) {
+                                Text("Junction Sync")
+                                    .font(.headline)
+                                Text(junctionManager.statusMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            junctionStatusIndicator
+                        }
+
+                        // Manual Sync Button
+                        Button(action: {
+                            syncJunctionData()
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.clockwise.cloud")
+                                Text("Sync Now")
+                                Spacer()
+                                if isSyncingJunction || junctionManager.syncStatus.isInProgress {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle())
+                                }
+                            }
+                        }
+                        .disabled(!junctionManager.isReady || isSyncingJunction || junctionManager.syncStatus.isInProgress)
+
+                        // Sync Details
+                        if let lastSync = junctionManager.lastSyncDate {
+                            HStack {
+                                Text("Last Sync")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(lastSync, style: .relative)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        // Connection Status
+                        HStack {
+                            Text("Connection")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(junctionManager.isConnected ? "Connected" : "Not Connected")
+                                .font(.caption)
+                                .foregroundColor(junctionManager.isConnected ? .green : .secondary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("About Cloud Sync")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            Text("Junction automatically syncs your health data to the cloud every hour for ML training. Note: HealthKit enforces a 3-hour data delay.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
 
@@ -256,6 +354,48 @@ struct SettingsView: View {
         } else if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             // Fallback to general Settings if Health URL doesn't work
             UIApplication.shared.open(settingsUrl)
+        }
+    }
+
+    // MARK: - Junction Helpers
+
+    private var junctionStatusIndicator: some View {
+        Group {
+            if junctionManager.isReady && junctionManager.syncStatus == .success {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            } else if junctionManager.syncStatus == .failed {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.red)
+            } else if junctionManager.syncStatus == .syncing {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+            } else if !junctionManager.isConnected {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.gray)
+            } else {
+                Image(systemName: "cloud.fill")
+                    .foregroundColor(.blue)
+            }
+        }
+    }
+
+    private func syncJunctionData() {
+        guard !isSyncingJunction else { return }
+
+        isSyncingJunction = true
+        Task {
+            do {
+                try await junctionManager.syncHealthData()
+                AnalyticsManager.shared.track(event: "junction_manual_sync", properties: [
+                    "from": "settings"
+                ])
+            } catch {
+                print("Error syncing Junction data: \(error.localizedDescription)")
+            }
+            await MainActor.run {
+                isSyncingJunction = false
+            }
         }
     }
 }

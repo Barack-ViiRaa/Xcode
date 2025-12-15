@@ -1,6 +1,15 @@
 {
-  "originHash" : "1a5a9c21d9cadb7549795033e69f863bad238cb7bea7695a3c01df5f9bee00c7",
+  "originHash" : "336d30fc1e87a2e42b71ebea5581f764f8897ff3db6f78fd541e23fe6476326d",
   "pins" : [
+    {
+      "identity" : "combinecorebluetooth",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/StarryInternet/CombineCoreBluetooth.git",
+      "state" : {
+        "revision" : "72b672e3adfdb0af357bfcebd4ef185429076405",
+        "version" : "0.8.0"
+      }
+    },
     {
       "identity" : "posthog-ios",
       "kind" : "remoteSourceControl",
@@ -62,6 +71,15 @@
       "state" : {
         "revision" : "a0a57e949a8903563aba4615869310c0ebf14c03",
         "version" : "1.4.0"
+      }
+    },
+    {
+      "identity" : "vital-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tryVital/vital-ios.git",
+      "state" : {
+        "revision" : "9857f0f89036ebcbdcd6718eb1fe32993fe7932e",
+        "version" : "1.8.4"
       }
     },
     {

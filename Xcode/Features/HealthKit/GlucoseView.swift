@@ -11,12 +11,14 @@ import HealthKit
 import Charts
 
 struct GlucoseView: View {
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var healthKitManager = HealthKitManager.shared
     @State private var glucoseReadings: [GlucoseReading] = []
     @State private var statistics: GlucoseStatistics?
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedTimeRange: TimeRange = .today
+    @State private var showPredictions = false
 
     enum TimeRange: String, CaseIterable {
         case today = "Today"
@@ -40,60 +42,97 @@ struct GlucoseView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Time range picker
-                    Picker("Time Range", selection: $selectedTimeRange) {
-                        ForEach(TimeRange.allCases, id: \.self) { range in
-                            Text(range.rawValue).tag(range)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding(.horizontal)
-                    .onChange(of: selectedTimeRange) { _ in
-                        Task {
-                            await loadGlucoseData()
-                        }
-                    }
-
-                    if isLoading {
-                        ProgressView("Loading glucose data...")
+                    // Show unavailable state if HealthKit is not available on this device
+                    if !healthKitManager.isHealthKitAvailable {
+                        HealthKitUnavailableView()
                             .padding()
-                    } else if let errorMessage = errorMessage {
-                        ErrorView(message: errorMessage) {
+                    } else {
+                        // Time range picker
+                        Picker("Time Range", selection: $selectedTimeRange) {
+                            ForEach(TimeRange.allCases, id: \.self) { range in
+                                Text(range.rawValue).tag(range)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .padding(.horizontal)
+                        .onChange(of: selectedTimeRange) { _ in
                             Task {
                                 await loadGlucoseData()
                             }
                         }
-                    } else {
-                        // Latest reading card
-                        if let latestReading = glucoseReadings.first {
-                            LatestGlucoseCard(reading: latestReading)
-                                .padding(.horizontal)
+
+                        // MARK: - Glucose Predictions Navigation
+                        // Navigate to glucose predictions WebView (PRD Section 4.2, Lines 192-199)
+                        NavigationLink(destination: GlucosePredictionWebView().environmentObject(authManager)) {
+                            HStack {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.title2)
+                                    .foregroundColor(Color("PrimaryColor"))
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Glucose Predictions")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("View and create glucose predictions")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            )
                         }
+                        .padding(.horizontal)
 
-                        // CRITICAL Statistics card - Emphasized metrics
-                        if let statistics = statistics {
-                            CriticalStatisticsCard(statistics: statistics)
-                                .padding(.horizontal)
-
-                            // Secondary statistics (smaller)
-                            SecondaryStatisticsCard(statistics: statistics)
-                                .padding(.horizontal)
-                        }
-
-                        // Glucose chart
-                        if !glucoseReadings.isEmpty {
-                            GlucoseChartView(readings: glucoseReadings)
-                                .frame(height: 300)
-                                .padding(.horizontal)
-                        }
-
-                        // Readings list
-                        if !glucoseReadings.isEmpty {
-                            ReadingsListView(readings: glucoseReadings)
-                                .padding(.horizontal)
-                        } else {
-                            EmptyStateView()
+                        if isLoading {
+                            ProgressView("Loading glucose data...")
                                 .padding()
+                        } else if let errorMessage = errorMessage {
+                            ErrorView(message: errorMessage) {
+                                Task {
+                                    await loadGlucoseData()
+                                }
+                            }
+                        } else {
+                            // Latest reading card
+                            if let latestReading = glucoseReadings.first {
+                                LatestGlucoseCard(reading: latestReading)
+                                    .padding(.horizontal)
+                            }
+
+                            // CRITICAL Statistics card - Emphasized metrics
+                            if let statistics = statistics {
+                                CriticalStatisticsCard(statistics: statistics)
+                                    .padding(.horizontal)
+
+                                // Secondary statistics (smaller)
+                                SecondaryStatisticsCard(statistics: statistics)
+                                    .padding(.horizontal)
+                            }
+
+                            // Glucose chart
+                            if !glucoseReadings.isEmpty {
+                                GlucoseChartView(readings: glucoseReadings)
+                                    .frame(height: 300)
+                                    .padding(.horizontal)
+                            }
+
+                            // Readings list
+                            if !glucoseReadings.isEmpty {
+                                ReadingsListView(readings: glucoseReadings)
+                                    .padding(.horizontal)
+                            } else {
+                                EmptyStateView()
+                                    .padding()
+                            }
                         }
                     }
                 }
@@ -721,6 +760,68 @@ struct ErrorView: View {
             }
         }
         .padding()
+    }
+}
+
+// MARK: - HealthKit Unavailable View
+
+struct HealthKitUnavailableView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "heart.slash")
+                .font(.system(size: 70))
+                .foregroundColor(.secondary)
+
+            Text("HealthKit Not Available")
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Text("HealthKit is not available on this device. This feature requires an iPhone or iPad with HealthKit support.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.blue)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("HealthKit is available on:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("• iPhone (iOS devices)")
+                            .font(.caption)
+                        Text("• iPad (iPadOS devices)")
+                            .font(.caption)
+                    }
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("HealthKit is not available on:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("• Mac (macOS devices)")
+                            .font(.caption)
+                        Text("• Apple Vision Pro (visionOS)")
+                            .font(.caption)
+                        Text("• Apple Watch standalone")
+                            .font(.caption)
+                    }
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.secondarySystemBackground))
+            )
+            .padding(.horizontal)
+        }
+        .padding(.vertical, 40)
+        .frame(maxWidth: .infinity)
     }
 }
 

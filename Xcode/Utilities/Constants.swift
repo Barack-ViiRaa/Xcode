@@ -30,13 +30,14 @@ struct Constants {
     // Junction (Vital) SDK Configuration
     // Reference: /Users/barack/Downloads/Xcode/3rd_Party_Bio_Data_Integration_Report.md
     // Note: Replace with actual API key after signing BAA with Junction
-    static let junctionAPIKey = "YOUR_JUNCTION_API_KEY"
-    static let junctionEnvironment = "sandbox" // "sandbox" or "production"
+    // Junction (Vital) SDK Configuration
+    static let junctionAPIKey = "sk_us_Gb2bkO8kvbSw0-DtyUWedO26IvtkomiYRafF7RRHMus"  // Sandbox key from Credentials.md (Updated: Dec 9, 2025)
+    static let junctionEnvironment = "sandbox"  // Use "sandbox" for testing
 
     // Feature Flags
     static let isHealthKitEnabled = true
     static let isPushNotificationsEnabled = false
-    static let isJunctionEnabled = false // Enable after Junction contract is signed
+    static let isJunctionEnabled = true // Enable after Junction contract is signed
 
     // UI Colors (Sage Green Primary)
     static let primaryColorHex = "#A8B79E"

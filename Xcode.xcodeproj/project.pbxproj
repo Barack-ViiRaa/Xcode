@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7160A9F42EDFA0B100FED8D4 /* VitalCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7160A9F32EDFA0B100FED8D4 /* VitalCore */; };
+		7160A9F62EDFA0B100FED8D4 /* VitalDevices in Frameworks */ = {isa = PBXBuildFile; productRef = 7160A9F52EDFA0B100FED8D4 /* VitalDevices */; };
+		7160A9F82EDFA0B100FED8D4 /* VitalHealthKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7160A9F72EDFA0B100FED8D4 /* VitalHealthKit */; };
 		71BAFE4B2EA09C9300EA4D02 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 71BAFE4A2EA09C9300EA4D02 /* Auth */; };
 		71BAFE4D2EA09C9300EA4D02 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 71BAFE4C2EA09C9300EA4D02 /* Functions */; };
 		71BAFE4F2EA09C9300EA4D02 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 71BAFE4E2EA09C9300EA4D02 /* PostgREST */; };
@@ -46,13 +49,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7160A9F82EDFA0B100FED8D4 /* VitalHealthKit in Frameworks */,
 				71BAFE5C2EA0A4C900EA4D02 /* Supabase in Frameworks */,
 				71BAFE4F2EA09C9300EA4D02 /* PostgREST in Frameworks */,
+				7160A9F42EDFA0B100FED8D4 /* VitalCore in Frameworks */,
 				71BAFE4D2EA09C9300EA4D02 /* Functions in Frameworks */,
 				71BAFE4B2EA09C9300EA4D02 /* Auth in Frameworks */,
 				71BAFE562EA09CC500EA4D02 /* PostHog in Frameworks */,
 				71BAFE532EA09C9300EA4D02 /* Storage in Frameworks */,
 				71BAFE512EA09C9300EA4D02 /* Realtime in Frameworks */,
+				7160A9F62EDFA0B100FED8D4 /* VitalDevices in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -110,6 +116,9 @@
 				71BAFE522EA09C9300EA4D02 /* Storage */,
 				71BAFE552EA09CC500EA4D02 /* PostHog */,
 				71BAFE5B2EA0A4C900EA4D02 /* Supabase */,
+				7160A9F32EDFA0B100FED8D4 /* VitalCore */,
+				7160A9F52EDFA0B100FED8D4 /* VitalDevices */,
+				7160A9F72EDFA0B100FED8D4 /* VitalHealthKit */,
 			);
 			productName = Xcode;
 			productReference = 71FB6F992EA0470100264333 /* Xcode.app */;
@@ -142,6 +151,7 @@
 			packageReferences = (
 				71BAFE492EA09C9300EA4D02 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				71BAFE542EA09CC500EA4D02 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				7160A9F22EDFA0B100FED8D4 /* XCRemoteSwiftPackageReference "vital-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 71FB6F9A2EA0470100264333 /* Products */;
@@ -389,6 +399,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		7160A9F22EDFA0B100FED8D4 /* XCRemoteSwiftPackageReference "vital-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tryVital/vital-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.8.4;
+			};
+		};
 		71BAFE492EA09C9300EA4D02 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -408,6 +426,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		7160A9F32EDFA0B100FED8D4 /* VitalCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7160A9F22EDFA0B100FED8D4 /* XCRemoteSwiftPackageReference "vital-ios" */;
+			productName = VitalCore;
+		};
+		7160A9F52EDFA0B100FED8D4 /* VitalDevices */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7160A9F22EDFA0B100FED8D4 /* XCRemoteSwiftPackageReference "vital-ios" */;
+			productName = VitalDevices;
+		};
+		7160A9F72EDFA0B100FED8D4 /* VitalHealthKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7160A9F22EDFA0B100FED8D4 /* XCRemoteSwiftPackageReference "vital-ios" */;
+			productName = VitalHealthKit;
+		};
 		71BAFE4A2EA09C9300EA4D02 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 71BAFE492EA09C9300EA4D02 /* XCRemoteSwiftPackageReference "supabase-swift" */;

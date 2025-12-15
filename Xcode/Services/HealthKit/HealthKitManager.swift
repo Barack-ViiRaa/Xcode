@@ -22,11 +22,15 @@ class HealthKitManager: ObservableObject {
     @Published var latestGlucoseReading: HKQuantitySample?
     @Published var latestWeight: HKQuantitySample?
     @Published var todayStepCount: Double = 0
+    @Published private(set) var isHealthKitAvailable: Bool = false
 
     // For conformance with ObservableObject when using @MainActor
     nonisolated let objectWillChange = ObservableObjectPublisher()
 
-    private init() {}
+    private init() {
+        // Check HealthKit availability at initialization
+        self.isHealthKitAvailable = HKHealthStore.isHealthDataAvailable()
+    }
 
     // MARK: - Availability Check
 
@@ -88,6 +92,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Latest HKQuantitySample for blood glucose, or nil if none found
     /// - Throws: HealthKitError if the data type is not available
     func fetchLatestGlucose() async throws -> HKQuantitySample? {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let glucoseType = HKObjectType.quantityType(forIdentifier: .bloodGlucose) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -129,6 +137,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Array of HKQuantitySample for blood glucose in the date range
     /// - Throws: HealthKitError if the data type is not available
     func fetchGlucoseHistory(startDate: Date, endDate: Date) async throws -> [HKQuantitySample] {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let glucoseType = HKObjectType.quantityType(forIdentifier: .bloodGlucose) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -170,6 +182,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Latest HKQuantitySample for body mass, or nil if none found
     /// - Throws: HealthKitError if the data type is not available
     func fetchLatestWeight() async throws -> HKQuantitySample? {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let weightType = HKObjectType.quantityType(forIdentifier: .bodyMass) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -211,6 +227,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Array of HKQuantitySample for body mass in the date range
     /// - Throws: HealthKitError if the data type is not available
     func fetchWeightHistory(startDate: Date, endDate: Date) async throws -> [HKQuantitySample] {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let weightType = HKObjectType.quantityType(forIdentifier: .bodyMass) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -253,6 +273,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Total step count for the date
     /// - Throws: HealthKitError if the data type is not available
     func fetchStepCount(for date: Date = Date()) async throws -> Double {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let stepsType = HKObjectType.quantityType(forIdentifier: .stepCount) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -296,6 +320,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Total active energy burned in kilocalories
     /// - Throws: HealthKitError if the data type is not available
     func fetchActiveEnergy(for date: Date = Date()) async throws -> Double {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -334,6 +362,10 @@ class HealthKitManager: ObservableObject {
     /// - Returns: Total exercise minutes
     /// - Throws: HealthKitError if the data type is not available
     func fetchExerciseMinutes(for date: Date = Date()) async throws -> Double {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         guard let exerciseType = HKObjectType.quantityType(forIdentifier: .appleExerciseTime) else {
             throw HealthKitError.typeNotAvailable
         }
@@ -372,6 +404,10 @@ class HealthKitManager: ObservableObject {
     /// Fetch all health data summaries for today
     /// - Returns: Dictionary with health data summaries
     func fetchTodayHealthSummary() async throws -> [String: Any] {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+
         var summary: [String: Any] = [:]
 
         // Fetch all data in parallel

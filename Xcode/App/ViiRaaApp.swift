@@ -4,6 +4,7 @@ import UIKit
 
 @main
 struct ViiRaaApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var analyticsManager = AnalyticsManager.shared
     @StateObject private var junctionManager = JunctionManager.shared
@@ -49,9 +50,11 @@ struct ViiRaaApp: App {
         AnalyticsManager.shared.initialize()
 
         // Initialize Junction SDK if enabled
-        // Note: Enable Constants.isJunctionEnabled after signing BAA with Junction
+        // Note: Using sandbox environment for testing (no BAA required)
+        // VitalClient.configure() is called in AppDelegate FIRST (required order)
+        // This just marks JunctionManager as configured and tracks analytics
         if Constants.isJunctionEnabled {
-            JunctionManager.shared.configure(apiKey: Constants.junctionAPIKey)
+            JunctionManager.shared.markConfigured(environment: Constants.junctionEnvironment)
         }
 
         configureAppearance()

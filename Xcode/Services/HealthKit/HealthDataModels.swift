@@ -16,12 +16,69 @@ struct GlucoseReading: Codable, Identifiable {
     let value: Double // mg/dL
     let timestamp: Date
     let source: String
+    let trend: GlucoseTrend?
+    let dataSource: DataSource?
+
+    // MARK: - Glucose Trend
+    enum GlucoseTrend: String, Codable {
+        case rapidlyRising    // ↑↑
+        case rising          // ↑
+        case stable          // →
+        case falling         // ↓
+        case rapidlyFalling  // ↓↓
+
+        var symbol: String {
+            switch self {
+            case .rapidlyRising: return "↑↑"
+            case .rising: return "↑"
+            case .stable: return "→"
+            case .falling: return "↓"
+            case .rapidlyFalling: return "↓↓"
+            }
+        }
+
+        var description: String {
+            switch self {
+            case .rapidlyRising: return "Rapidly Rising"
+            case .rising: return "Rising"
+            case .stable: return "Stable"
+            case .falling: return "Falling"
+            case .rapidlyFalling: return "Rapidly Falling"
+            }
+        }
+    }
+
+    // MARK: - Data Source
+    enum DataSource: String, Codable {
+        case bleFollowMode = "ble_follow"
+        case healthKit = "healthkit"
+        case junction = "junction"
+
+        var displayName: String {
+            switch self {
+            case .bleFollowMode: return "BLE Follow Mode"
+            case .healthKit: return "HealthKit"
+            case .junction: return "Junction"
+            }
+        }
+    }
 
     init(from sample: HKQuantitySample) {
         self.id = sample.uuid.uuidString
         self.value = sample.quantity.doubleValue(for: HKUnit(from: "mg/dL"))
         self.timestamp = sample.endDate
         self.source = sample.sourceRevision.source.name
+        self.trend = nil
+        self.dataSource = .healthKit
+    }
+
+    init(id: String = UUID().uuidString, value: Double, timestamp: Date, source: String, trend: GlucoseTrend? = nil, dataSource: DataSource? = nil) {
+        self.id = id
+        self.value = value
+        self.timestamp = timestamp
+        self.source = source
+        self.trend = trend
+        self.dataSource = dataSource
     }
 }
 
@@ -52,6 +109,53 @@ extension GlucoseReading {
 
     var isInRange: Bool {
         return range == .normal
+    }
+
+    // MARK: - BLE-specific helper methods
+    var isRecent: Bool {
+        let now = Date()
+        let timeInterval = now.timeIntervalSince(timestamp)
+        return timeInterval < 900 // Less than 15 minutes
+    }
+
+    var formattedValue: String {
+        return String(format: "%.0f mg/dL", value)
+    }
+
+    var formattedTimestamp: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: timestamp, relativeTo: Date())
+    }
+}
+
+// MARK: - BLE Follow Error
+enum BLEFollowError: Error, LocalizedError {
+    case bluetoothUnavailable
+    case unauthorizedAccess
+    case connectionFailed
+    case dataParsingFailed
+    case validationFailed
+    case sensorNotFound
+    case timeout
+
+    var errorDescription: String? {
+        switch self {
+        case .bluetoothUnavailable:
+            return "Bluetooth is not available on this device"
+        case .unauthorizedAccess:
+            return "Bluetooth access is not authorized. Please enable it in Settings."
+        case .connectionFailed:
+            return "Failed to connect to the glucose sensor"
+        case .dataParsingFailed:
+            return "Failed to parse glucose data from the sensor"
+        case .validationFailed:
+            return "Glucose reading validation failed"
+        case .sensorNotFound:
+            return "No Abbott Lingo sensor found nearby"
+        case .timeout:
+            return "Connection timeout. Please ensure the sensor is nearby."
+        }
     }
 }
 
