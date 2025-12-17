@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var showSignOutConfirmation = false
     @State private var isSigningOut = false
     @State private var isSyncingJunction = false
+    @State private var isRunningDiagnostic = false
 
     var body: some View {
         NavigationView {
@@ -183,6 +184,57 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+
+                        // Debug Section for Bug #21
+                        Divider()
+
+                        Text("Troubleshooting")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+
+                        // Run Diagnostic Button
+                        Button(action: {
+                            runJunctionDiagnostic()
+                        }) {
+                            HStack {
+                                Image(systemName: "stethoscope")
+                                    .foregroundColor(.orange)
+                                Text("Run Sync Diagnostic")
+                                Spacer()
+                                if isRunningDiagnostic {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle())
+                                }
+                            }
+                        }
+                        .disabled(isRunningDiagnostic)
+
+                        // Force Glucose Permission Button
+                        Button(action: {
+                            forceGlucosePermission()
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundColor(.orange)
+                                Text("Re-request Glucose Permission")
+                            }
+                        }
+
+                        // Write Mock Data Button (for testing)
+                        Button(action: {
+                            writeMockGlucoseData()
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle")
+                                    .foregroundColor(.purple)
+                                Text("Write Mock Glucose Data (Test)")
+                            }
+                        }
+
+                        Text("⚠️ Simulator Limitation: Mock data will have ViiRaa as source. Junction may only sync data from real CGM devices (Abbott Lingo, Dexcom). Test on a physical iPhone with Lingo for production validation.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -396,6 +448,32 @@ struct SettingsView: View {
             await MainActor.run {
                 isSyncingJunction = false
             }
+        }
+    }
+
+    // MARK: - Bug #21 Diagnostic Functions
+
+    private func runJunctionDiagnostic() {
+        guard !isRunningDiagnostic else { return }
+
+        isRunningDiagnostic = true
+        Task {
+            await junctionManager.runFullBug21Diagnostic()
+            await MainActor.run {
+                isRunningDiagnostic = false
+            }
+        }
+    }
+
+    private func forceGlucosePermission() {
+        Task {
+            await junctionManager.forceRequestGlucosePermission()
+        }
+    }
+
+    private func writeMockGlucoseData() {
+        Task {
+            await junctionManager.writeMockGlucoseData()
         }
     }
 }

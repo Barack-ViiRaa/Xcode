@@ -11,6 +11,7 @@
 
 import Foundation
 import Combine
+import HealthKit
 import VitalCore
 import VitalHealthKit
 
@@ -696,6 +697,408 @@ class JunctionManager: ObservableObject {
 
         // Track disconnection
         AnalyticsManager.shared.track(event: "junction_user_disconnected")
+    }
+
+    // MARK: - Sync Health Check (Bug #21 Fix)
+
+    /// Sync health status for diagnostics
+    /// Used to identify issues with Junction sync not delivering data
+    enum SyncHealthStatus: CustomStringConvertible {
+        case healthy(localCount: Int, cloudCount: Int)
+        case notSignedIn
+        case missingGlucosePermission
+        case noLocalData
+        case syncFailed(localCount: Int, cloudCount: Int)
+        case permissionMismatch(healthKitGranted: Bool, vitalGranted: Bool)
+        case error(String)
+
+        var description: String {
+            switch self {
+            case .healthy(let local, let cloud):
+                return "✅ Healthy - Local: \(local) readings, Cloud: \(cloud) readings"
+            case .notSignedIn:
+                return "❌ VitalClient not signed in - data will not sync"
+            case .missingGlucosePermission:
+                return "❌ VitalHealthKitClient missing glucose permission"
+            case .noLocalData:
+                return "⚠️ No glucose data in local HealthKit"
+            case .syncFailed(let local, let cloud):
+                return "❌ Sync Failed - Local: \(local) readings, Cloud: \(cloud) readings (data not reaching Junction)"
+            case .permissionMismatch(let hk, let vital):
+                return "⚠️ Permission Mismatch - HealthKit: \(hk ? "granted" : "denied"), VitalClient: \(vital ? "granted" : "denied")"
+            case .error(let msg):
+                return "❌ Error: \(msg)"
+            }
+        }
+
+        var isHealthy: Bool {
+            if case .healthy = self { return true }
+            return false
+        }
+    }
+
+    /// Perform a comprehensive sync health check
+    /// This function diagnoses why glucose data may not be syncing to Junction
+    /// Per Bug #21 analysis in Learnings_From_Doing.md
+    /// - Returns: SyncHealthStatus indicating the current state
+    func performSyncHealthCheck() async -> SyncHealthStatus {
+        print("🔍 Starting Junction sync health check...")
+
+        // 1. Check if VitalClient is signed in
+        let vitalStatus = await VitalClient.status
+        guard vitalStatus.contains(.signedIn) else {
+            print("❌ Health Check: VitalClient not signed in")
+            return .notSignedIn
+        }
+        print("✅ Health Check: VitalClient is signed in")
+
+        // 2. Log permission status comparison (Bug #21 fix - detect permission mismatch)
+        await logPermissionStatus()
+
+        // 3. Check if local HealthKit has glucose data
+        let localReadings: [HKQuantitySample]
+        do {
+            localReadings = try await HealthKitManager.shared.fetchGlucoseHistory(
+                startDate: Date().addingTimeInterval(-30 * 24 * 60 * 60), // Last 30 days
+                endDate: Date()
+            )
+        } catch {
+            print("⚠️ Health Check: Could not fetch local glucose data - \(error.localizedDescription)")
+            return .error("Failed to fetch local HealthKit data: \(error.localizedDescription)")
+        }
+
+        guard !localReadings.isEmpty else {
+            print("⚠️ Health Check: No glucose data in local HealthKit")
+            return .noLocalData
+        }
+        print("✅ Health Check: Found \(localReadings.count) local glucose readings")
+
+        // 4. Query Junction API to verify cloud has data
+        let cloudReadings = try? await fetchGlucoseFromCloud(
+            startDate: Date().addingTimeInterval(-30 * 24 * 60 * 60),
+            endDate: Date()
+        )
+
+        let cloudCount = cloudReadings?.count ?? 0
+        print("📊 Health Check: Cloud has \(cloudCount) glucose readings")
+
+        if cloudCount > 0 {
+            print("✅ Health Check: HEALTHY - Data is syncing to Junction")
+            return .healthy(localCount: localReadings.count, cloudCount: cloudCount)
+        } else {
+            print("❌ Health Check: SYNC FAILED - Local data exists but cloud is empty")
+            print("   Possible causes:")
+            print("   1. VitalHealthKitClient doesn't have glucose permission")
+            print("   2. Data source attribution not recognized by Junction")
+            print("   3. 3-hour HealthKit delay (for recent readings only)")
+            print("   4. Sync not yet completed - check again in 5 minutes")
+            return .syncFailed(localCount: localReadings.count, cloudCount: 0)
+        }
+    }
+
+    /// Log permission status to detect mismatches between HealthKitManager and VitalHealthKitClient
+    /// Per Bug #21 analysis: The app has dual permission systems that may not be synchronized
+    func logPermissionStatus() async {
+        print("🔍 Checking permission status for glucose sync...")
+
+        // Check HealthKitManager (direct HealthKit) permission
+        guard let glucoseType = HKObjectType.quantityType(forIdentifier: .bloodGlucose) else {
+            print("❌ Could not get glucose type from HealthKit")
+            return
+        }
+
+        let hkStatus = HealthKitManager.shared.authorizationStatus(for: glucoseType)
+        let hkGranted = hkStatus == .sharingAuthorized
+
+        print("📋 HealthKitManager glucose permission: \(hkStatus.rawValue) (\(hkGranted ? "granted" : "not granted"))")
+
+        // Note: VitalHealthKitClient doesn't expose a direct authorizationStatus check
+        // We infer it from whether sync is working
+        // The VitalClient.status tells us if the SDK is signed in, not permission status
+
+        // Log the status for debugging
+        let vitalStatus = await VitalClient.status
+        print("📋 VitalClient status: signedIn=\(vitalStatus.contains(.signedIn))")
+
+        // Track permission status for analytics
+        AnalyticsManager.shared.track(event: "junction_permission_check", properties: [
+            "healthkit_glucose_granted": hkGranted,
+            "vital_signed_in": vitalStatus.contains(.signedIn)
+        ])
+
+        if !hkGranted {
+            print("⚠️ WARNING: HealthKit glucose permission not granted!")
+            print("   User may have granted permissions through VitalHealthKitClient but not HealthKitManager")
+            print("   Or vice versa - this can cause sync issues")
+        }
+    }
+
+    // MARK: - Debug Functions for Bug #21
+
+    /// Force re-request glucose permissions through VitalHealthKitClient
+    /// Use this when glucose data is not syncing to Junction despite other data syncing
+    func forceRequestGlucosePermission() async {
+        print("🔄 Force requesting glucose permission through VitalHealthKitClient...")
+
+        // Request ONLY glucose permission to ensure it's specifically granted
+        let outcome = await VitalHealthKitClient.shared.ask(
+            readPermissions: [.vitals(.glucose)],
+            writePermissions: []
+        )
+
+        print("📋 VitalHealthKitClient.ask() outcome: \(outcome)")
+
+        // Also request through HealthKitManager for comparison
+        do {
+            try await HealthKitManager.shared.requestAuthorization()
+            print("✅ HealthKitManager authorization also requested")
+        } catch {
+            print("⚠️ HealthKitManager authorization failed: \(error)")
+        }
+
+        // Check the status after requesting
+        await logPermissionStatus()
+
+        // Trigger a sync
+        print("🔄 Triggering sync after permission request...")
+        VitalHealthKitClient.shared.syncData()
+
+        print("✅ Glucose permission request complete - check Junction dashboard in 5 minutes")
+    }
+
+    /// Debug function to check what data sources exist for glucose in HealthKit
+    /// This helps identify if the glucose data is from a recognized source
+    func debugGlucoseDataSources() async {
+        print("🔍 Debugging glucose data sources in HealthKit...")
+
+        do {
+            let readings = try await HealthKitManager.shared.fetchGlucoseHistory(
+                startDate: Date().addingTimeInterval(-30 * 24 * 60 * 60),
+                endDate: Date()
+            )
+
+            print("📊 Found \(readings.count) glucose readings in HealthKit")
+
+            // Group by source
+            var sourceCount: [String: Int] = [:]
+            for reading in readings {
+                let sourceName = reading.sourceRevision.source.name
+                let bundleId = reading.sourceRevision.source.bundleIdentifier
+                let key = "\(sourceName) (\(bundleId))"
+                sourceCount[key, default: 0] += 1
+            }
+
+            print("📋 Glucose data sources:")
+            for (source, count) in sourceCount.sorted(by: { $0.value > $1.value }) {
+                print("   - \(source): \(count) readings")
+            }
+
+            // Check if any readings are from recognized CGM sources
+            let recognizedSources = ["com.abbott.lingo", "com.dexcom", "com.freestyle", "com.medtronic"]
+            let hasRecognizedSource = readings.contains { reading in
+                let bundleId = reading.sourceRevision.source.bundleIdentifier
+                return recognizedSources.contains { bundleId.lowercased().contains($0) }
+            }
+
+            if hasRecognizedSource {
+                print("✅ Found readings from recognized CGM source")
+            } else {
+                print("⚠️ WARNING: No readings from recognized CGM sources!")
+                print("   Junction may not sync manually-entered glucose data")
+                print("   Recognized sources: Abbott Lingo, Dexcom, Freestyle, Medtronic")
+            }
+
+            // Show sample readings with sources
+            print("\n📋 Sample readings (last 5):")
+            for reading in readings.suffix(5) {
+                let value = reading.quantity.doubleValue(for: HKUnit(from: "mg/dL"))
+                let date = reading.endDate
+                let source = reading.sourceRevision.source.name
+                print("   - \(value) mg/dL at \(date) from '\(source)'")
+            }
+
+        } catch {
+            print("❌ Error fetching glucose history: \(error)")
+        }
+    }
+
+    /// Write mock glucose data to HealthKit for testing
+    /// NOTE: This data will have ViiRaa's bundle ID as source, NOT a CGM device
+    /// Junction may not sync this data if they filter by source
+    /// Use this only for testing the sync flow, not for production
+    func writeMockGlucoseData() async {
+        print("📝 Writing mock glucose data to HealthKit for testing...")
+        print("⚠️  NOTE: This data will have ViiRaa as source, not a CGM device")
+        print("⚠️  Junction may not sync data from non-CGM sources")
+
+        guard let glucoseType = HKQuantityType.quantityType(forIdentifier: .bloodGlucose) else {
+            print("❌ Could not get glucose type")
+            return
+        }
+
+        let healthStore = HKHealthStore()
+
+        // Request write permission
+        do {
+            try await healthStore.requestAuthorization(
+                toShare: [glucoseType],
+                read: [glucoseType]
+            )
+        } catch {
+            print("❌ Failed to get write permission: \(error)")
+            return
+        }
+
+        // Create mock glucose readings (values between 80-140 mg/dL)
+        let mockReadings: [(value: Double, hoursAgo: Double)] = [
+            (95.0, 4.0),   // 4 hours ago (should be past 3-hour delay)
+            (110.0, 5.0),  // 5 hours ago
+            (125.0, 6.0),  // 6 hours ago
+            (98.0, 24.0),  // 1 day ago
+            (115.0, 48.0), // 2 days ago
+        ]
+
+        var successCount = 0
+        for (value, hoursAgo) in mockReadings {
+            let quantity = HKQuantity(unit: HKUnit(from: "mg/dL"), doubleValue: value)
+            let date = Date().addingTimeInterval(-hoursAgo * 60 * 60)
+            let sample = HKQuantitySample(
+                type: glucoseType,
+                quantity: quantity,
+                start: date,
+                end: date
+            )
+
+            do {
+                try await healthStore.save(sample)
+                successCount += 1
+                print("   ✅ Saved: \(value) mg/dL at \(date)")
+            } catch {
+                print("   ❌ Failed to save \(value) mg/dL: \(error)")
+            }
+        }
+
+        print("📝 Wrote \(successCount)/\(mockReadings.count) mock glucose readings")
+        print("")
+        print("🔄 Triggering sync to Junction...")
+        VitalHealthKitClient.shared.syncData()
+
+        print("")
+        print("📋 NEXT STEPS:")
+        print("   1. Wait 5 minutes for sync to complete")
+        print("   2. Check Junction dashboard Data Ingestion tab")
+        print("   3. If glucose still doesn't appear, Junction likely filters by source")
+        print("   4. Test on a REAL device with Abbott Lingo for production validation")
+    }
+
+    /// Complete debug routine for Bug #21
+    /// Run this to get full diagnostic information
+    func runFullBug21Diagnostic() async {
+        print("═══════════════════════════════════════════════════════════")
+        print("🔬 RUNNING FULL BUG #21 DIAGNOSTIC")
+        print("═══════════════════════════════════════════════════════════")
+
+        // 1. Check VitalClient status
+        print("\n📍 Step 1: VitalClient Status")
+        let vitalStatus = await VitalClient.status
+        print("   signedIn: \(vitalStatus.contains(.signedIn))")
+
+        // 2. Check permissions
+        print("\n📍 Step 2: Permission Status")
+        await logPermissionStatus()
+
+        // 3. Check glucose data sources
+        print("\n📍 Step 3: Glucose Data Sources")
+        await debugGlucoseDataSources()
+
+        // 4. Run health check
+        print("\n📍 Step 4: Sync Health Check")
+        let healthStatus = await performSyncHealthCheck()
+        print("   Result: \(healthStatus)")
+
+        // 5. Summary
+        print("\n═══════════════════════════════════════════════════════════")
+        print("📋 DIAGNOSTIC SUMMARY")
+        print("═══════════════════════════════════════════════════════════")
+        print("   VitalClient signed in: \(vitalStatus.contains(.signedIn))")
+        print("   Health status: \(healthStatus)")
+        print("")
+        print("🔧 RECOMMENDED ACTIONS:")
+        if !vitalStatus.contains(.signedIn) {
+            print("   1. Sign out and sign back in to re-authenticate VitalClient")
+        }
+        if case .noLocalData = healthStatus {
+            print("   1. Add glucose data to Apple Health from a CGM device")
+        }
+        if case .syncFailed = healthStatus {
+            print("   1. Run forceRequestGlucosePermission() to re-request permissions")
+            print("   2. Check if glucose data source is recognized (CGM vs manual entry)")
+            print("   3. Wait 2 hours and check Junction dashboard's Mobile SDK Sync tab")
+        }
+        print("═══════════════════════════════════════════════════════════")
+    }
+
+    /// Verify that sync actually delivered data to Junction
+    /// Call this after syncHealthData() to confirm data reached the server
+    /// - Returns: true if cloud has data, false otherwise
+    func verifySyncSuccess() async -> Bool {
+        print("🔍 Verifying sync delivered data to Junction...")
+
+        do {
+            let cloudReadings = try await fetchGlucoseFromCloud(
+                startDate: Date().addingTimeInterval(-30 * 24 * 60 * 60),
+                endDate: Date()
+            )
+
+            let success = !cloudReadings.isEmpty
+            if success {
+                print("✅ Sync verification: \(cloudReadings.count) readings found in Junction cloud")
+            } else {
+                print("❌ Sync verification: No data found in Junction cloud")
+                print("   This may be due to:")
+                print("   - 3-hour HealthKit delay for recent readings")
+                print("   - VitalHealthKitClient missing glucose permission")
+                print("   - Data source not recognized by Junction")
+            }
+
+            // Track verification result
+            AnalyticsManager.shared.track(event: "junction_sync_verification", properties: [
+                "success": success,
+                "cloud_reading_count": cloudReadings.count
+            ])
+
+            return success
+        } catch {
+            print("❌ Sync verification failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// Trigger sync and verify it succeeded
+    /// This is an enhanced version of syncHealthData() that includes verification
+    func syncHealthDataWithVerification() async throws -> Bool {
+        // First, perform the sync
+        try await syncHealthData()
+
+        // Wait a bit for the sync to propagate
+        print("⏳ Waiting 10 seconds for sync to propagate...")
+        try await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+
+        // Then verify
+        let success = await verifySyncSuccess()
+
+        if !success {
+            // Perform full health check to diagnose the issue
+            let healthStatus = await performSyncHealthCheck()
+            print("📊 Full health check result: \(healthStatus)")
+
+            // Track the failure with diagnostic info
+            AnalyticsManager.shared.track(event: "junction_sync_verification_failed", properties: [
+                "health_status": healthStatus.description
+            ])
+        }
+
+        return success
     }
 }
 
