@@ -107,3 +107,12 @@ Xcode/Feedback.txt
 
 # Screenshots and Videos
 Screenshots_Videos/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.mp4
+*.mov
+*.avi
