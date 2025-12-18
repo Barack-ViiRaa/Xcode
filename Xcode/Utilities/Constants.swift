@@ -29,10 +29,25 @@ struct Constants {
 
     // Junction (Vital) SDK Configuration
     // Reference: /Users/barack/Downloads/Xcode/3rd_Party_Bio_Data_Integration_Report.md
-    // Note: Replace with actual API key after signing BAA with Junction
-    // Junction (Vital) SDK Configuration
-    static let junctionAPIKey = "sk_us_Gb2bkO8kvbSw0-DtyUWedO26IvtkomiYRafF7RRHMus"  // Sandbox key from Credentials.md (Updated: Dec 9, 2025)
-    static let junctionEnvironment = "sandbox"  // Use "sandbox" for testing
+    //
+    // ⚠️ IMPORTANT - API Key Environment Selection:
+    // - SANDBOX keys (sk_us_*): Create test users only, data visible in sandbox dashboard
+    // - PRODUCTION keys (pk_us_*): Create real users, requires signed BAA with Junction
+    //
+    // Current Status: Using SANDBOX key - real user accounts will NOT appear in Junction
+    // To fix Bug #22 (Personal Account Not Found):
+    //   1. Sign Business Associate Agreement (BAA) with Junction/Vital
+    //   2. Get production API key from https://app.tryvital.io (starts with pk_us_)
+    //   3. Replace the sandbox key below with your production key
+    //   4. Change junctionEnvironment to "production"
+    //
+    // For testing only (current configuration):
+    static let junctionAPIKey = "sk_us_Gb2bkO8kvbSw0-DtyUWedO26IvtkomiYRafF7RRHMus"  // Sandbox key - REPLACE WITH PRODUCTION KEY
+    static let junctionEnvironment = "sandbox"  // Change to "production" after getting production API key
+    //
+    // For production (after signing BAA and obtaining production API key):
+    // static let junctionAPIKey = "pk_us_YOUR_PRODUCTION_KEY_HERE"  // Production key from app.tryvital.io
+    // static let junctionEnvironment = "production"  // Use production environment
 
     // Feature Flags
     static let isHealthKitEnabled = true

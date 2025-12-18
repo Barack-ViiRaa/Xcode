@@ -1,9 +1,5 @@
-In ViiRaa iOS app, user `dev@viiraa.com` logged in. In the Apple Health app, it shows the following data.
+I used Lingo GCM and synced up glucose to my physical iPhone. For Junction synchronization, the frontend is ok (show working). But I could NOT find my personal account in Junction. 
 
-<Blood Glucose Data>
-December 1, 2025: 120 mg/dl
-December 2, 2025: 123 mg/dl
-December 11, 2025: 124 mg/dl
-</Blood Glucose Data>
+Screenshot is in `/Users/barack/Downloads/Xcode/Screenshots/image.png`. 
 
-But in `https://app.junction.com/team/40f5717b-bba1-47f6-90d2-d59d41747b04/sandbox/user/5c9657f5-c5cf-47fb-ac64-9f0774604445/wearables`, although I can see that user_id `5c9657f5-c5cf-47fb-ac64-9f0774604445` shows Apple Health is connected, but I cannot find the Blood Glucose Data for this user.
+Demo video is in `/Users/barack/Downloads/Xcode/Screenshots/RPReplay_Final1765945878.MP4.mp4`.

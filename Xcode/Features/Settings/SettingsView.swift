@@ -173,7 +173,66 @@ struct SettingsView: View {
                             Spacer()
                             Text(junctionManager.isConnected ? "Connected" : "Not Connected")
                                 .font(.caption)
-                                .foregroundColor(junctionManager.isConnected ? .green : .secondary)
+                                .foregroundColor(junctionManager.isConnected ? .green : .red)
+                        }
+
+                        // User Account Status
+                        HStack {
+                            Text("User Account")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(junctionManager.userId != nil ? "Created" : "Not Created")
+                                .font(.caption)
+                                .foregroundColor(junctionManager.userId != nil ? .green : .red)
+                        }
+
+                        // Show User ID for Junction Dashboard search
+                        if let userId = junctionManager.userId {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Client User ID")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(userId)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.primary)
+                                    .textSelection(.enabled)
+                                Button(action: {
+                                    UIPasteboard.general.string = userId
+                                }) {
+                                    HStack {
+                                        Image(systemName: "doc.on.doc")
+                                            .font(.caption)
+                                        Text("Copy User ID")
+                                            .font(.caption)
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            .padding(.vertical, 4)
+
+                            Text("💡 Tip: Search for this ID in Junction Dashboard → Users → Search by \"Client User ID\"")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+
+                        // Manual Connection Button (for Bug #22 fix)
+                        if !junctionManager.isConnected {
+                            Button(action: {
+                                manuallyConnectToJunction()
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.triangle.2.circlepath.circle")
+                                        .foregroundColor(.orange)
+                                    Text("Retry Junction Connection")
+                                }
+                            }
+
+                            if let error = junctionManager.syncError {
+                                Text("Last error: \(error.localizedDescription)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.top, 4)
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -235,6 +294,25 @@ struct SettingsView: View {
                         Text("⚠️ Simulator Limitation: Mock data will have ViiRaa as source. Junction may only sync data from real CGM devices (Abbott Lingo, Dexcom). Test on a physical iPhone with Lingo for production validation.")
                             .font(.caption)
                             .foregroundColor(.secondary)
+
+                        // View Error Log Button (Bug #22 fix)
+                        NavigationLink(destination: ErrorLogView()) {
+                            HStack {
+                                Image(systemName: "doc.text.magnifyingglass")
+                                    .foregroundColor(.purple)
+                                Text("View Error Log")
+                            }
+                        }
+
+                        Button(action: {
+                            clearErrorLog()
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                                Text("Clear Error Log")
+                            }
+                        }
                     }
                 }
 
@@ -475,6 +553,55 @@ struct SettingsView: View {
         Task {
             await junctionManager.writeMockGlucoseData()
         }
+    }
+
+    // MARK: - Manual Junction Connection (Bug #22 Fix)
+
+    private func manuallyConnectToJunction() {
+        Task {
+            guard let userId = authManager.user?.id else {
+                print("❌ No user ID available for Junction connection")
+                return
+            }
+
+            print("🔄 Manually connecting to Junction...")
+            print("   User ID: \(userId)")
+            print("   Environment: \(Constants.junctionEnvironment)")
+            print("   API Key prefix: \(Constants.junctionAPIKey.prefix(8))...")
+
+            do {
+                // Try to connect user to Junction
+                try await junctionManager.connectUser(userId: userId)
+                print("✅ Junction connection successful")
+
+                // Request HealthKit permissions
+                try await junctionManager.requestHealthKitPermissions()
+                print("✅ HealthKit permissions requested")
+
+                // Start automatic sync
+                junctionManager.startAutomaticSync()
+                print("✅ Automatic sync started")
+
+                // Track success
+                AnalyticsManager.shared.track(event: "junction_manual_connection_success", properties: [
+                    "user_id": userId
+                ])
+            } catch {
+                print("❌ Junction connection failed: \(error.localizedDescription)")
+                print("   Error type: \(type(of: error))")
+
+                // Track failure
+                AnalyticsManager.shared.track(event: "junction_manual_connection_failed", properties: [
+                    "user_id": userId,
+                    "error": error.localizedDescription
+                ])
+            }
+        }
+    }
+
+    private func clearErrorLog() {
+        ErrorLogger.shared.clearLogs()
+        ErrorLogger.shared.log("User cleared error log from Settings", category: "System")
     }
 }
 

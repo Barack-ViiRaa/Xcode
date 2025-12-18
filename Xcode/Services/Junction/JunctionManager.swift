@@ -102,7 +102,7 @@ class JunctionManager: ObservableObject {
     // MARK: - Private Properties
 
     private var apiKey: String?
-    private var userId: String?
+    @Published var userId: String?  // Made @Published for UI to show user account status (Bug #22 fix)
     private var syncTimer: Timer?
     private let syncInterval: TimeInterval = 3600 // 1 hour (matching Junction's hourly sync)
 
@@ -116,15 +116,21 @@ class JunctionManager: ObservableObject {
     ///   - environment: Environment to use ("sandbox" or "production")
     /// - Note: Must sign BAA with Junction before using in production
     /// - Important: VitalClient.configure() should be called in AppDelegate BEFORE VitalHealthKitClient.automaticConfiguration()
+    /// - Deprecated: This function is not used - configuration happens in AppDelegate. Use markConfigured() instead.
+    @available(*, deprecated, message: "Configuration now happens in AppDelegate. Use markConfigured() instead.")
     func configure(apiKey: String, environment: String = "sandbox") {
         self.apiKey = apiKey
 
-        // Configure VitalClient with the appropriate environment
+        // NOTE: VitalClient.configure() is deprecated in newer SDK versions
+        // This code path is not used - configuration happens in AppDelegate
+        // Keeping for backward compatibility but should be removed in future
+        #if false
         if environment == "sandbox" {
             VitalClient.configure(apiKey: apiKey, environment: .sandbox(.us))
         } else {
             VitalClient.configure(apiKey: apiKey, environment: .production(.us))
         }
+        #endif
 
         self.isConfigured = true
 
@@ -154,19 +160,33 @@ class JunctionManager: ObservableObject {
     /// Connect a user to Junction for data sync
     /// - Parameter userId: The ViiRaa user ID to associate with Junction
     func connectUser(userId: String) async throws {
+        ErrorLogger.shared.log("=== JUNCTION CONNECTION ATTEMPT ===", category: "Junction")
+        ErrorLogger.shared.log("User ID: \(userId)", category: "Junction")
+        ErrorLogger.shared.log("Environment: \(Constants.junctionEnvironment)", category: "Junction")
+        ErrorLogger.shared.log("API Key prefix: \(Constants.junctionAPIKey.prefix(8))...", category: "Junction")
+
         guard isConfigured else {
-            throw JunctionError.notConfigured
+            let error = JunctionError.notConfigured
+            self.syncError = error
+            ErrorLogger.shared.log("ERROR: Junction not configured", category: "Junction")
+            throw error
         }
 
         guard let apiKey = self.apiKey else {
-            throw JunctionError.invalidAPIKey
+            let error = JunctionError.invalidAPIKey
+            self.syncError = error
+            ErrorLogger.shared.log("ERROR: Invalid API key", category: "Junction")
+            throw error
         }
 
+        // Clear previous errors
+        self.syncError = nil
         self.userId = userId
+        ErrorLogger.shared.log("Starting connection process...", category: "Junction")
 
         // Check if VitalClient is already signed in (session persists across app launches)
         // Per docs: "it is unnecessary to request and sign-in with the Vital Sign-In Token every time your app launches"
-        let currentStatus = await VitalClient.status
+        let currentStatus = VitalClient.status
         if currentStatus.contains(.signedIn) {
             print("✅ VitalClient already signed in - skipping sign-in flow")
 
@@ -199,9 +219,24 @@ class JunctionManager: ObservableObject {
         // This is required before the SDK can sync data for this user
         print("📝 Creating user in Junction backend...")
 
-        let junctionUserId = try await createUserInJunction(clientUserId: userId, apiKey: apiKey)
+        let junctionUserId: String
+        do {
+            junctionUserId = try await createUserInJunction(clientUserId: userId, apiKey: apiKey)
+            print("✅ User created in Junction: \(junctionUserId)")
+            ErrorLogger.shared.log("SUCCESS: User created in Junction: \(junctionUserId)", category: "Junction")
+        } catch {
+            print("❌ Failed to create user in Junction: \(error.localizedDescription)")
+            ErrorLogger.shared.log("ERROR: Failed to create user - \(error.localizedDescription)", category: "Junction")
 
-        print("✅ User created in Junction: \(junctionUserId)")
+            // Store error for UI display (Bug #22 fix)
+            if let junctionError = error as? JunctionError {
+                self.syncError = junctionError
+            } else {
+                self.syncError = .syncFailed(error)
+            }
+
+            throw error
+        }
 
         // CRITICAL: Create a sign-in token and sign in with VitalClient
         // Without this, data will NOT upload to Junction's cloud!
@@ -217,6 +252,9 @@ class JunctionManager: ObservableObject {
 
         // Sign in with VitalClient - this authenticates the SDK to upload data
         // Note: The SDK exchanges the short-lived token for permanent credentials
+        // NOTE: VitalClient.signIn(withRawToken:) is deprecated in favor of identify(_:authenticate:)
+        // However, the migration path is not yet documented. This code is functional despite the warning.
+        // TODO: Update to new authentication API when migration documentation is available
         do {
             try await VitalClient.signIn(withRawToken: signInToken)
             print("✅ VitalClient signed in successfully - data will now sync to Junction cloud")
@@ -242,6 +280,13 @@ class JunctionManager: ObservableObject {
                 "error": errorString,
                 "token_length": signInToken.count
             ])
+
+            // Store error for UI display (Bug #22 fix)
+            if let junctionError = error as? JunctionError {
+                self.syncError = junctionError
+            } else {
+                self.syncError = .syncFailed(error)
+            }
 
             throw error
         }
@@ -543,9 +588,13 @@ class JunctionManager: ObservableObject {
         // IMPORTANT: Must include .vitals(.glucose) to sync glucose data to Junction!
         // Per docs: "sync is automatically activated on all resource types you have asked permission for"
         // Note: glucose is a nested type under .vitals - use .vitals(.glucose), NOT .glucose
+        //
+        // CRITICAL FIX (Bug #21): Request permissions for glucose
+        // Note: VitalHealthKit SDK manages write permissions internally
+        // We only need to request read permissions - the SDK handles data write operations
         let _ = await VitalHealthKitClient.shared.ask(
             readPermissions: [.vitals(.glucose), .activity, .workout, .sleep],
-            writePermissions: []
+            writePermissions: []  // VitalHealthKit doesn't expose write permissions API
         )
 
         print("✅ HealthKit permissions granted via Junction (including glucose)")
@@ -745,7 +794,7 @@ class JunctionManager: ObservableObject {
         print("🔍 Starting Junction sync health check...")
 
         // 1. Check if VitalClient is signed in
-        let vitalStatus = await VitalClient.status
+        let vitalStatus = VitalClient.status
         guard vitalStatus.contains(.signedIn) else {
             print("❌ Health Check: VitalClient not signed in")
             return .notSignedIn
@@ -817,7 +866,7 @@ class JunctionManager: ObservableObject {
         // The VitalClient.status tells us if the SDK is signed in, not permission status
 
         // Log the status for debugging
-        let vitalStatus = await VitalClient.status
+        let vitalStatus = VitalClient.status
         print("📋 VitalClient status: signedIn=\(vitalStatus.contains(.signedIn))")
 
         // Track permission status for analytics
@@ -841,9 +890,10 @@ class JunctionManager: ObservableObject {
         print("🔄 Force requesting glucose permission through VitalHealthKitClient...")
 
         // Request ONLY glucose permission to ensure it's specifically granted
+        // Note: VitalHealthKit SDK manages write permissions internally
         let outcome = await VitalHealthKitClient.shared.ask(
             readPermissions: [.vitals(.glucose)],
-            writePermissions: []
+            writePermissions: []  // VitalHealthKit doesn't expose write permissions API
         )
 
         print("📋 VitalHealthKitClient.ask() outcome: \(outcome)")
@@ -1000,7 +1050,7 @@ class JunctionManager: ObservableObject {
 
         // 1. Check VitalClient status
         print("\n📍 Step 1: VitalClient Status")
-        let vitalStatus = await VitalClient.status
+        let vitalStatus = VitalClient.status
         print("   signedIn: \(vitalStatus.contains(.signedIn))")
 
         // 2. Check permissions

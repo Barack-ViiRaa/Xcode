@@ -40,8 +40,13 @@ class HealthKitManager: ObservableObject {
 
     // MARK: - Authorization
 
-    /// Request authorization to read health data from HealthKit
+    /// Request authorization to read and write health data from HealthKit
     /// - Throws: HealthKitError if HealthKit is not available or authorization fails
+    /// - Note: Write permissions added for Bug #21 fix - enables app to write glucose data
+    ///         that Junction can recognize and sync. Required for scenarios where:
+    ///         1. Testing data sync functionality
+    ///         2. Manual glucose entry by user
+    ///         3. Integration with CGM devices that don't write to HealthKit directly
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailable
@@ -56,8 +61,13 @@ class HealthKitManager: ObservableObject {
             HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!
         ]
 
-        // We're only reading data, not writing
-        let typesToWrite: Set<HKSampleType> = []
+        // CRITICAL FIX (Bug #21): Request WRITE permission for glucose
+        // This allows ViiRaa to write glucose data that Junction can recognize and sync
+        // Without this, Junction may not sync glucose data even if it exists in HealthKit
+        // Per Bug #21 analysis: "ViiRaa reads glucose from HealthKit but doesn't write data"
+        let typesToWrite: Set<HKSampleType> = [
+            HKObjectType.quantityType(forIdentifier: .bloodGlucose)!
+        ]
 
         do {
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
@@ -65,7 +75,9 @@ class HealthKitManager: ObservableObject {
             self.authorizationError = nil
 
             // Track authorization event
-            AnalyticsManager.shared.track(event: "healthkit_authorized")
+            AnalyticsManager.shared.track(event: "healthkit_authorized", properties: [
+                "glucose_write_permission": true  // Track that we now request write permissions
+            ])
         } catch {
             self.authorizationError = error
             self.isAuthorized = false

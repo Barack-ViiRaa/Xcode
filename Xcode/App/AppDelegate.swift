@@ -19,6 +19,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // The SDK requires this order: VitalClient.configure() -> VitalHealthKitClient.automaticConfiguration()
         // Without this order, JWT sign-in will fail with VitalJWTSignInError
         // Bug 19: https://docs.junction.com/wearables/sdks/authentication
+        //
+        // NOTE: VitalClient.configure() is deprecated in favor of new authentication API
+        // However, this is still the documented initialization method. Code is functional despite warnings.
+        // TODO: Update to new SDK initialization when migration documentation is available
         if Constants.isJunctionEnabled {
             if Constants.junctionEnvironment == "sandbox" {
                 VitalClient.configure(apiKey: Constants.junctionAPIKey, environment: .sandbox(.us))
