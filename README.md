@@ -10,14 +10,117 @@ ViiRaa is a native iOS health and wellness application that combines glucose mon
 
 ## Table of Contents
 
-1. [Project Structure](#project-structure)
-2. [Technical Architecture](#technical-architecture)
-3. [Key Features](#key-features)
-4. [Documentation Guide](#documentation-guide)
-5. [Quick Start](#quick-start)
-6. [Development Workflow](#development-workflow)
-7. [Build &amp; Deployment](#build--deployment)
-8. [Troubleshooting](#troubleshooting)
+1. [Onboarding Guide](#onboarding-guide) (New Team Members Start Here)
+2. [Project Structure](#project-structure)
+3. [Technical Architecture](#technical-architecture)
+4. [Key Features](#key-features)
+5. [Documentation Guide](#documentation-guide)
+6. [Quick Start](#quick-start)
+7. [Development Workflow](#development-workflow)
+8. [Build &amp; Deployment](#build--deployment)
+9. [Troubleshooting](#troubleshooting)
+
+---
+
+## Onboarding Guide
+
+**For New Team Members**: This section provides a quick overview of 4 active projects to help you get started quickly. These projects were initiated and developed by Barack (hongyang@uw.edu), who created the foundational architecture and documentation for this codebase. Feel free to reach out for questions about the original implementation.
+
+### Project 1: ViiRaa iOS App
+
+| Item                        | Details                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Previous Owner**    | Barack                                                                                                              |
+| **Overall Plan**      | Build a native iOS health and wellness app combining glucose monitoring, weight tracking, and personalized coaching |
+| **Current Progress**  | Phase 2 Complete (HealthKit integration done). Ready for TestFlight and App Store submission                        |
+| **Main Difficulties** | Swift 6 concurrency compliance, App Store approval strategy, WebView-native communication                           |
+| **Research & Docs**   | See documentation list below                                                                                        |
+
+**Documentation for Project 1:**
+
+| Document                                                                                | Description                       | Last Updated |
+| --------------------------------------------------------------------------------------- | --------------------------------- | ------------ |
+| [Product_Requirement_Document.md](Product_Requirement_Document.md)                         | Product vision and specifications | Dec 22, 2025 |
+| [Software_Development_Document.md](Software_Development_Document.md)                       | Technical architecture and design | Dec 22, 2025 |
+| [Learnings_From_Doing.md](Learnings_From_Doing.md)                                         | Bug fixes and lessons learned     | Dec 22, 2025 |
+| [Xcode/SWIFT6_FIXES.md](Xcode/SWIFT6_FIXES.md)                                             | Swift 6 concurrency fixes         | Oct 21, 2025 |
+| [Xcode/HEALTHKIT_INTEGRATION_GUIDE.md](Xcode/HEALTHKIT_INTEGRATION_GUIDE.md)               | HealthKit architecture details    | Nov 21, 2025 |
+| [Xcode/HEALTHKIT_IMPLEMENTATION_SUMMARY.md](Xcode/HEALTHKIT_IMPLEMENTATION_SUMMARY.md)     | HealthKit feature summary         | Nov 21, 2025 |
+| [Xcode/HEALTHKIT_QUICK_START.md](Xcode/HEALTHKIT_QUICK_START.md)                           | 5-minute HealthKit setup          | Nov 21, 2025 |
+| [Xcode/CRITICAL_STATISTICS_IMPLEMENTATION.md](Xcode/CRITICAL_STATISTICS_IMPLEMENTATION.md) | Critical glucose metrics feature  | Oct 27, 2025 |
+| [Credentials.md](Credentials.md)                                                           | API keys and credentials (shared) | Dec 9, 2025  |
+
+### Project 2: Sync ViiRaa iOS App Data to Junction
+
+| Item                        | Details                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Previous Owner**    | Barack                                                                                                     |
+| **Overall Plan**      | Sync health data collected from iOS app (HealthKit) to Junction backend for centralized data processing    |
+| **Current Progress**  | Junction SDK integrated. API key renewal process documented                                                |
+| **Main Difficulties** | 3-hour data delay from Junction, API key expiration (1 week shelf life), real-time vs batch sync decisions |
+| **Research & Docs**   | See documentation list below                                                                               |
+
+**Documentation for Project 2:**
+
+| Document                                                                          | Description                                      | Last Updated |
+| --------------------------------------------------------------------------------- | ------------------------------------------------ | ------------ |
+| [3rd_Party_Bio_Data_Integration_Report.md](3rd_Party_Bio_Data_Integration_Report.md) | Research on Junction SDK, BLE, and cloud storage | Nov 20, 2025 |
+| [JUNCTION_API_KEY_RENEWAL.md](JUNCTION_API_KEY_RENEWAL.md)                           | Guide for renewing expired Junction API keys     | Dec 2, 2025  |
+| [Deployment_Guide.md](Deployment_Guide.md)                                           | Junction SDK Integration (Section 9)             | Dec 22, 2025 |
+| [Credentials.md](Credentials.md)                                                     | Junction API keys (shared)                       | Dec 9, 2025  |
+
+### Project 3: BLE Scheme
+
+| Item                        | Details                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Previous Owner**    | Barack                                                                                                             |
+| **Overall Plan**      | Implement Bluetooth Low Energy (BLE) connectivity for direct CGM device pairing (Abbott Lingo sensors)             |
+| **Current Progress**  | BLE Follow Mode implemented. Core BLE service layer complete with CoreBluetooth integration                        |
+| **Main Difficulties** | Proprietary CGM protocols (no reverse engineering), background BLE operations, cross-validation with Junction data |
+| **Research & Docs**   | See documentation list below                                                                                       |
+
+**Documentation for Project 3:**
+
+| Document                                                                          | Description                            | Last Updated |
+| --------------------------------------------------------------------------------- | -------------------------------------- | ------------ |
+| [BLE_IMPLEMENTATION_SUMMARY.md](BLE_IMPLEMENTATION_SUMMARY.md)                       | BLE Follow Mode implementation details | Dec 2, 2025  |
+| [3rd_Party_Bio_Data_Integration_Report.md](3rd_Party_Bio_Data_Integration_Report.md) | BLE research and CGM device analysis   | Nov 20, 2025 |
+| [Software_Development_Document.md](Software_Development_Document.md)                 | BLE specs in lines 1553-2039           | Dec 22, 2025 |
+
+### Project 4: ViiRaa iOS App Store Submission
+
+| Item                        | Details                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Previous Owner**    | Barack                                                                                             |
+| **Overall Plan**      | Submit app to TestFlight for internal testing, then to App Store for public release                |
+| **Current Progress**  | **REJECTED** on Dec 3, 2025. See rejection reasons and solutions below                             |
+| **Main Difficulties** | App Store review guidelines compliance, HealthKit usage justification, privacy policy requirements |
+| **Research & Docs**   | See documentation list below                                                                       |
+
+**App Store Rejection Summary (Dec 3, 2025):**
+
+| Guideline | Issue | Solution |
+|-----------|-------|----------|
+| **4.8 - Login Services** | App uses Google OAuth but doesn't offer Sign in with Apple | Implement "Sign in with Apple" as an equivalent login option |
+| **2.3.3 - Accurate Metadata** | iPad screenshots only show login screen | Upload screenshots showing app's core features (glucose tracking, dashboard) |
+| **4.0 - Design** | UI is crowded/difficult to use on iPad Air (5th gen) | Improve iPad layout responsiveness and readability |
+| **5.1.1(v) - Account Deletion** | No option to delete user account | Add account deletion feature in app settings |
+
+**Documentation for Project 4:**
+
+| Document                                                                       | Description                                        | Last Updated |
+| ------------------------------------------------------------------------------ | -------------------------------------------------- | ------------ |
+| [Deployment_Guide.md](Deployment_Guide.md)                                     | Complete deployment guide (TestFlight + App Store) | Dec 22, 2025 |
+| [Xcode/ARCHIVE_BUILD_FIX_GUIDE.md](Xcode/ARCHIVE_BUILD_FIX_GUIDE.md)           | Archive build troubleshooting                      | Oct 27, 2025 |
+| [Product_Requirement_Document.md](Product_Requirement_Document.md)             | App Store approval strategy                        | Dec 22, 2025 |
+| [251202-App_Store_Submission_Results.html](251202-App_Store_Submission_Results.html) | **Full rejection details from Apple** (must read)  | Dec 2, 2025  |
+
+### Recommended Reading Order for New Team Members
+
+1. **This README** - Get the full picture
+2. **[HEALTHKIT_QUICK_START.md](Documentation/HEALTHKIT_QUICK_START.md)** - 5-minute setup guide
+3. **[Implementation_Guide.md](Documentation/Implementation_Guide.md)** - Step-by-step development setup
+4. **[Learnings_From_Doing.md](Documentation/Learnings_From_Doing.md)** - Common issues and solutions
 
 ---
 
@@ -104,43 +207,32 @@ Xcode/
 
 ### Application Architecture
 
-```
-┌─────────────────────────────────────────┐
-│         ViiRaa iOS Native App           │
-│  ┌───────────────────────────────────┐  │
-│  │   AuthManager (Supabase Auth)     │  │
-│  │   - Session management            │  │
-│  │   - Keychain storage              │  │
-│  └───────────────┬───────────────────┘  │
-│                  │                       │
-│  ┌───────────────▼───────────────────┐  │
-│  │      MainTabView (3 tabs)         │  │
-│  │  ┌──────────┬──────────┬────────┐ │  │
-│  │  │Dashboard │ Glucose  │  Chat  │ │  │
-│  │  └────┬─────┴────┬─────┴────────┘ │  │
-│  └───────┼──────────┼────────────────┘  │
-│          │          │                    │
-│  ┌───────▼──────┐   │                    │
-│  │ DashboardWeb │   │                    │
-│  │ View         │   │                    │
-│  │ (WKWebView)  │   │                    │
-│  └──────────────┘   │                    │
-│                     │                    │
-│  ┌──────────────────▼─────────────────┐ │
-│  │   HealthKitManager                 │ │
-│  │   - Glucose data (CGM)             │ │
-│  │   - Weight tracking                │ │
-│  │   - Activity data                  │ │
-│  └────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-           │ HTTPS
-           ▼
-┌─────────────────────────────────────────┐
-│    ViiRaa Web Infrastructure            │
-│  - React Dashboard                      │
-│  - Supabase Backend                     │
-│  - Node.js API                          │
-└─────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph iOS["ViiRaa iOS Native App"]
+        Auth["AuthManager<br/>(Supabase Auth)<br/>• Session management<br/>• Keychain storage"]
+
+        subgraph Tabs["MainTabView (3 tabs)"]
+            Dashboard["Dashboard"]
+            Glucose["Glucose"]
+            Chat["Chat"]
+        end
+
+        WebView["DashboardWebView<br/>(WKWebView)"]
+        HK["HealthKitManager<br/>• Glucose data (CGM)<br/>• Weight tracking<br/>• Activity data"]
+
+        Auth --> Tabs
+        Dashboard --> WebView
+        Glucose --> HK
+    end
+
+    subgraph Web["ViiRaa Web Infrastructure"]
+        React["React Dashboard"]
+        Supabase["Supabase Backend"]
+        NodeAPI["Node.js API"]
+    end
+
+    iOS -->|HTTPS| Web
 ```
 
 ---
@@ -215,7 +307,7 @@ Xcode/
 
 ### HealthKit Documentation
 
-4. **[HEALTHKIT_QUICK_START.md](Xcode/HEALTHKIT_QUICK_START.md)** 
+4. **[HEALTHKIT_QUICK_START.md](Xcode/HEALTHKIT_QUICK_START.md)**
 
    - 5-minute setup guide
    - Quick configuration steps
@@ -287,7 +379,7 @@ Xcode/
    ```
 2. **Enable HealthKit Capability** ⚠️ **REQUIRED**
 
-   - Select `251015-Xcode` target
+   - Select `Xcode` target
    - Go to **Signing & Capabilities** tab
    - Click **+ Capability**
    - Add **HealthKit**
@@ -607,13 +699,13 @@ This is a private project. For issues or questions:
 
 ## Acknowledgments
 
-- **Product Design**: Barack
+- **Product Design & iOS Development**: Barack (hongyang@uw.edu)
 - **Development**: Claude Code (AI Assistant)
 - **Testing**: Internal ViiRaa Team
-- **Feedback**: Lei 
+- **Feedback**: Lei
 
 ---
 
-**Last Updated**: December 18th, 2025
-**Documentation Version**: 1.0
+**Last Updated**: December 23, 2025
+**Documentation Version**: 1.1
 **Project Status**: Phase 2 Complete - Ready for Deployment
